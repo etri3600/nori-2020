@@ -18,6 +18,7 @@
 
 #include <nori/accel.h>
 #include <Eigen/Geometry>
+#include <nori/octree.h>
 
 NORI_NAMESPACE_BEGIN
 
@@ -29,7 +30,7 @@ void Accel::addMesh(Mesh *mesh) {
 }
 
 void Accel::build() {
-    /* Nothing to do here for now */
+    m_node = nori::build(m_bbox, m_mesh->getVertexPositions(), m_mesh->getIndices());
 }
 
 bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) const {
@@ -38,19 +39,25 @@ bool Accel::rayIntersect(const Ray3f &ray_, Intersection &its, bool shadowRay) c
 
     Ray3f ray(ray_); /// Make a copy of the ray (we will need to update its '.maxt' value)
 
-    /* Brute force search through all triangles */
-    for (uint32_t idx = 0; idx < m_mesh->getTriangleCount(); ++idx) {
-        float u, v, t;
-        if (m_mesh->rayIntersect(idx, ray, u, v, t)) {
-            /* An intersection was found! Can terminate
-               immediately if this is a shadow ray query */
-            if (shadowRay)
-                return true;
-            ray.maxt = its.t = t;
-            its.uv = Point2f(u, v);
-            its.mesh = m_mesh;
-            f = idx;
-            foundIntersection = true;
+    if (m_node == nullptr)
+        return false;
+
+    const Node* intersectNode = m_node->rayIntersect(ray);
+    if (intersectNode)
+    {
+        for (uint32_t idx = 0; idx < intersectNode->faceIndices.size(); ++idx) {
+            float u, v, t;
+            if (m_mesh->rayIntersect(intersectNode->faceIndices.at(idx), ray, u, v, t)) {
+                /* An intersection was found! Can terminate
+                    immediately if this is a shadow ray query */
+                if (shadowRay)
+                    return true;
+                ray.maxt = its.t = t;
+                its.uv = Point2f(u, v);
+                its.mesh = m_mesh;
+                f = idx;
+                foundIntersection = true;
+            }
         }
     }
 

@@ -161,6 +161,16 @@ public:
     std::string toString() const {
         return tfm::format("[%f, %f, %f]", coeff(0), coeff(1), coeff(2));
     }
+
+    Normal3f abs() const {
+        float x = operator[](0);
+        x = x >= 0.0f ? x : -x;
+		float y = operator[](1);
+		y = y >= 0.0f ? y : -y;
+		float z = operator[](2);
+		z = z >= 0.0f ? z : -z;
+        return Normal3f(x,y,z);
+    }
 };
 
 /// Complete the set {a} to an orthonormal base
